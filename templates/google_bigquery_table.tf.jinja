@@ -1,0 +1,27 @@
+resource "google_bigquery_table" "this" {
+  location   = "asia-southeast1"
+  project    = "{{ project_id }}"
+  dataset_id = "{{ dataset_id }}"
+  table_id   = "{{ table_id }}"
+
+  labels = {
+    "managed-by" = "terraform"
+    "corpgroup"  = "cake-data",
+    "data_zone"  = "raw_zone",
+    "loader"     = "pubsub"
+  }
+
+  time_partitioning {
+    type  = "DAY"
+    field = "{{ partitioning_field }}"
+  }
+
+  {% if clustering_fields -%}
+  clustering = [{% for field in clustering_fields %}"{{ field }}"{% if not loop.last %}, {% endif %}{% endfor %}]
+  {%- endif %}
+
+  schema = <<EOF
+{{ schema }}
+EOF
+
+}
