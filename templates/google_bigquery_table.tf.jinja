@@ -1,8 +1,7 @@
-resource "google_bigquery_table" "this" {
-  location   = "asia-southeast1"
-  project    = "{{ project_id }}"
-  dataset_id = "{{ dataset_id }}"
-  table_id   = "{{ table_id }}"
+resource "google_bigquery_table" "{{ dataset_id }}-{{ table_id }}" {
+  deletion_protection = false
+  dataset_id          = google_bigquery_dataset.{{ dataset_id }}.dataset_id
+  table_id            = "{{ table_id }}"
 
   labels = {
     "managed-by" = "terraform"

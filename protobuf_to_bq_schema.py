@@ -89,25 +89,12 @@ def generate_bigquery_schema(topic_schema_definition: str) -> str:
         return json.dumps(bq_schema, indent=2)
 
 
-def render_google_bigquery_table(
+def generate_template_variables(
     resource_id: str,
     protobuf_schema: str,
     partitioning_field: str = "publish_time",
     clustering_fields: list[str] | None = None,
-) -> str:
-    """
-    Renders the Google BigQuery table Terraform template.
-
-    Args:
-        resource_id: The resource ID of the BigQuery table.
-        protobuf_schema: The protobuf schema as a string.
-        partitioning_field: The partitioning field for the table.
-        clustering_fields: The clustering fields for the table.
-
-    Returns:
-        The rendered Terraform template as a string.
-    """
-    # The maximum number of clustering fields is 4 if specified
+) -> dict:
     if clustering_fields is not None:
         clustering_fields = clustering_fields[:4]
 
@@ -118,16 +105,43 @@ def render_google_bigquery_table(
     # Generate the BigQuery schema
     schema = generate_bigquery_schema(protobuf_schema)
 
+    return {
+        "project_id": project_id,
+        "dataset_id": dataset_id,
+        "table_id": table_id,
+        "schema": schema,
+        "partitioning_field": partitioning_field,
+        "clustering_fields": clustering_fields,
+    }
+
+
+def render_google_bigquery_dataset(
+    template_variables: dict,
+) -> str:
+    # Render the Terraform template
+    environment = jinja2.Environment(loader=jinja2.FileSystemLoader(f"{CWD}/templates"))
+    template = environment.get_template("google_bigquery_dataset.tf.jinja")
+    content = template.render(
+        project_id=template_variables["project_id"],
+        dataset_id=template_variables["dataset_id"],
+    )
+
+    return content
+
+
+def render_google_bigquery_table(
+    template_variables: dict,
+) -> str:
     # Render the Terraform template
     environment = jinja2.Environment(loader=jinja2.FileSystemLoader(f"{CWD}/templates"))
     template = environment.get_template("google_bigquery_table.tf.jinja")
     content = template.render(
-        project_id=project_id,
-        dataset_id=dataset_id,
-        table_id=table_id,
-        schema=schema,
-        partitioning_field=partitioning_field,
-        clustering_fields=clustering_fields,
+        project_id=template_variables["project_id"],
+        dataset_id=template_variables["dataset_id"],
+        table_id=template_variables["table_id"],
+        schema=template_variables["schema"],
+        partitioning_field=template_variables["partitioning_field"],
+        clustering_fields=template_variables["clustering_fields"],
     )
 
     return content
@@ -135,15 +149,16 @@ def render_google_bigquery_table(
 
 # Example usage
 if __name__ == "__main__":
-    bigquery_table = "bef-cake-sandbox.qa_cake_recaptcha.recaptcha_message"
-    topic_schema_definition = 'syntax = "proto3";\nmessage Recaptcha {\nstring id = 1; \nstring platform = 2; \nstring user_action = 3; \nstring token_action = 4; \nfloat score = 5;\nstring client_id = 6;\nstring device_id = 7;\nstring phone = 8;\nAssessment assessment = 9; \nmap<string, string> additional = 10;\nstring created_at = 11;//TIMESTAMP\n}\nmessage Assessment {\nRiskAnalysis risk_analysis = 1;\nTokenProperties token_prototypes = 2;\n}\nmessage RiskAnalysis {\nrepeated string reasons = 1;\n}\nmessage TokenProperties {\nstring invalid_reasons = 1;\nbool valid = 2; \n}'
-
-    content = render_google_bigquery_table(
+    bigquery_table = "bef-cake-sandbox.stage_cake_recaptcha.recaptcha_message"
+    topic_schema_definition = 'syntax = "proto3";\nmessage Recaptcha {\nstring id = 1;\nstring platform = 2;\nstring user_action = 3;\nstring token_action = 4;\nfloat score = 5;\nstring client_id = 6;\nstring device_id = 7;\nstring phone = 8;\nstring risk_analysis_reasons = 9; //JSON \nstring token_properties_invalid_reason = 10;\nbool token_properties_valid = 11;\nstring additional = 12; //JSON \nstring created_at = 13; //TIMESTAMP \n}'
+    template_vars = generate_template_variables(
         resource_id=bigquery_table,
         protobuf_schema=topic_schema_definition,
         partitioning_field="created_at",
-        clustering_fields=["client_id"],
+        clustering_fields=["platform", "client_id", "device_id", "phone"],
     )
 
-    with open(CWD / "test" / "test.tf", "w") as f:
-        f.write(content)
+    with open(CWD / "test" / "dataset.tf", "w") as f:
+        f.write(render_google_bigquery_dataset(template_vars))
+    with open(CWD / "test" / "table.tf", "w") as f:
+        f.write(render_google_bigquery_table(template_vars))
