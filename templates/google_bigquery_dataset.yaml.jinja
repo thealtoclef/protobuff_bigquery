@@ -1,0 +1,10 @@
+---
+apiVersion: bigquery.cnrm.cloud.google.com/v1beta1
+kind: BigQueryDataset
+metadata:
+  name: "{{ dataset_id | replace('_', '-') }}"
+  annotations:
+    cnrm.cloud.google.com/delete-contents-on-destroy: "false"
+spec:
+  resourceID: "{{ dataset_id }}"
+  location: asia-southeast1

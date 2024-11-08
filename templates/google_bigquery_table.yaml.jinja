@@ -1,0 +1,16 @@
+---
+apiVersion: bigquery.cnrm.cloud.google.com/v1beta1
+kind: BigQueryTable
+metadata:
+  name: "{{ dataset_id | replace('_', '-') }}-{{ table_id | replace('_', '-') }}"
+  labels:
+    data-source: pubsub
+spec:
+  resourceID: "{{ table_id }}"
+  datasetRef:
+    name: "{{ dataset_id | replace('_', '-') }}"
+  timePartitioning:
+    field: "{{ partitioning_field }}"
+    type: DAY
+  schema: |
+    {{ schema | indent(4) }}
