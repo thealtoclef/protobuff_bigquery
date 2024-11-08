@@ -1,8 +1,14 @@
 # Protobuf to Terraform google_bigquery_table resource
 
-- Install `go` and `protobuf`
+- Install `uv`, `go` and `protobuf`
 ```
-brew install go protobuf
+brew install uv go protobuf
+```
+
+- Create venv and install python requirements
+```
+uv venv
+uv pip install -r requirements.txt
 ```
 
 - Add go bin to PATH
