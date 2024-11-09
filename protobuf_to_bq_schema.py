@@ -1,17 +1,11 @@
-import glob
 import json
-import os
 import subprocess
-from pathlib import Path
 from string import Template
-from tempfile import TemporaryDirectory
 
 import jinja2
 from proto_schema_parser.ast import Import, Package
 from proto_schema_parser.generator import Generator
 from proto_schema_parser.parser import Parser
-
-CWD = Path(__file__).parent.absolute()
 
 
 def generate_bigquery_schema(topic_schema_definition: str) -> str:
@@ -103,12 +97,12 @@ def generate_template_variables(
     }
 
 
-def render_google_bigquery_dataset(
+def render_bigquery_dataset(
     template_variables: dict,
 ) -> str:
     # Render the Terraform template
-    environment = jinja2.Environment(loader=jinja2.FileSystemLoader(f"{CWD}/templates"))
-    template = environment.get_template("google_bigquery_dataset.yaml.jinja")
+    environment = jinja2.Environment(loader=jinja2.FileSystemLoader("templates"))
+    template = environment.get_template("bigquery_dataset.yaml.jinja")
     content = template.render(
         project_id=template_variables["project_id"],
         dataset_id=template_variables["dataset_id"],
@@ -117,19 +111,18 @@ def render_google_bigquery_dataset(
     return content
 
 
-def render_google_bigquery_table(
+def render_bigquery_table(
     template_variables: dict,
 ) -> str:
     # Render the Terraform template
-    environment = jinja2.Environment(loader=jinja2.FileSystemLoader(f"{CWD}/templates"))
-    template = environment.get_template("google_bigquery_table.yaml.jinja")
+    environment = jinja2.Environment(loader=jinja2.FileSystemLoader("templates"))
+    template = environment.get_template("bigquery_table.yaml.jinja")
     content = template.render(
         project_id=template_variables["project_id"],
         dataset_id=template_variables["dataset_id"],
         table_id=template_variables["table_id"],
         schema=template_variables["schema"],
         partitioning_field=template_variables["partitioning_field"],
-        clustering_fields=template_variables["clustering_fields"],
     )
 
     return content
@@ -138,7 +131,7 @@ def render_google_bigquery_table(
 # Example usage
 if __name__ == "__main__":
     bigquery_table = "northstar-as-se1-dev.mqtt.event_fcm"
-    topic_schema_definition = "syntax = \"proto2\";\nmessage EventTracking {\nrequired string event_name = 1;\noptional string params = 2;// JSON\nrequired string event_id = 3;\noptional string client_id = 4;\nrequired string created_at = 5;// TIMESTAMP\nmap<string, string> map_params = 6;}"
+    topic_schema_definition = 'syntax = "proto2";\nmessage EventTracking {\nrequired string event_name = 1;\noptional string params = 2;// JSON\nrequired string event_id = 3;\noptional string client_id = 4;\nrequired string created_at = 5;// TIMESTAMP\nmap<string, string> map_params = 6;}'
     template_vars = generate_template_variables(
         resource_id=bigquery_table,
         protobuf_schema=topic_schema_definition,
@@ -146,6 +139,6 @@ if __name__ == "__main__":
     )
 
     with open("target/dataset.yaml", "w") as f:
-        f.write(render_google_bigquery_dataset(template_vars))
+        f.write(render_bigquery_dataset(template_vars))
     with open("target/table.yaml", "w") as f:
-        f.write(render_google_bigquery_table(template_vars))
+        f.write(render_bigquery_table(template_vars))
