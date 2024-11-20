@@ -10,7 +10,9 @@ spec:
   datasetRef:
     name: "{{ dataset_id | replace('_', '-') }}"
   timePartitioning:
-    field: "{{ partitioning_field }}"
+    field: "{{ partitioning_field | default('publish_time') }}"
     type: DAY
+    requirePartitionFilter: true
+  clustering: ["publish_time"]
   schema: |
     {{ schema | indent(4) }}

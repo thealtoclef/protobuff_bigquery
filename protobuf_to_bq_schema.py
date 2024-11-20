@@ -22,7 +22,11 @@ def generate_bigquery_schema(topic_schema_definition: str) -> str:
     type_override_template = Template(
         '[(gen_bq_schema.bigquery).type_override = "$type"]'
     )
-    lines = [line.split("//") for line in topic_schema_definition.split("\n")]
+    lines = [
+        line.split("//")
+        for line in topic_schema_definition.split("\n")
+        if not line.lower().startswith("reserved")  # Skip reserved fields
+    ]
     processed_lines = [
         line[0].strip().rstrip(";")
         + " "
@@ -131,7 +135,7 @@ def render_bigquery_table(
 # Example usage
 if __name__ == "__main__":
     bigquery_table = "northstar-as-se1-dev.mqtt.event_fcm"
-    topic_schema_definition = 'syntax = "proto2";\nmessage EventTracking {\nrequired string event_name = 1;\noptional string params = 2;// JSON\nrequired string event_id = 3;\noptional string client_id = 4;\nrequired string created_at = 5;// TIMESTAMP\nmap<string, string> map_params = 6;}'
+    topic_schema_definition = 'syntax = "proto2";\nmessage EventTracking {\nrequired string event_name = 1;\nreserved 2;// JSON\nrequired string event_id = 3;\noptional string client_id = 4;\nrequired string created_at = 5;// TIMESTAMP\nmap<string, string> map_params = 6;\n}'
     template_vars = generate_template_variables(
         resource_id=bigquery_table,
         protobuf_schema=topic_schema_definition,
