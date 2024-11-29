@@ -1,8 +1,10 @@
 import json
 import subprocess
 from string import Template
-
+import yaml
+import os
 import jinja2
+from pathlib import Path
 from proto_schema_parser.ast import Import, Package
 from proto_schema_parser.generator import Generator
 from proto_schema_parser.parser import Parser
@@ -132,10 +134,38 @@ def render_bigquery_table(
     return content
 
 
+def search_yaml_files(directory: Path, pubsubschema_name: str):
+    definitions = []
+    for extension in ["*.yml", "*.yaml"]:
+        for file_path in directory.rglob(extension):
+            try:
+                with file_path.open("r") as stream:
+                    documents = yaml.safe_load_all(stream)
+                    for doc in documents:
+                        if isinstance(doc, dict) and (
+                            doc.get("kind") == "PubSubSchema"
+                            and doc.get("metadata", {}).get("name") == pubsubschema_name
+                        ):
+                            print(f"Match found in file: {file_path}")
+                            spec_definition = doc.get("spec", {}).get("definition")
+                            if spec_definition:
+                                definitions.append(spec_definition)
+                            else:
+                                print("spec.definition not found in the document.")
+            except yaml.YAMLError as exc:
+                print(f"Error parsing YAML file {file_path}: {exc}")
+
+    return definitions
+
+
 # Example usage
 if __name__ == "__main__":
-    bigquery_table = "northstar-as-se1-dev.mqtt.event_fcm"
-    topic_schema_definition = 'syntax = "proto2";\nmessage EventTracking {\nrequired string event_name = 1;\nreserved 2;// JSON\nrequired string event_id = 3;\noptional string client_id = 4;\nrequired string created_at = 5;// TIMESTAMP\nmap<string, string> map_params = 6;\n}'
+    control_plane = Path(
+        "/Users/buu.nguyen/Repositories/cake-digital-bank/control-plane"
+    )
+    pubsubschema_name = "prd-event-fcm-schema-v2"
+    bigquery_table = "northstar-as-se1-prd.mqtt.event_fcm"
+    topic_schema_definition = search_yaml_files(control_plane, pubsubschema_name)[0]
     template_vars = generate_template_variables(
         resource_id=bigquery_table,
         protobuf_schema=topic_schema_definition,

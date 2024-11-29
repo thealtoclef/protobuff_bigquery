@@ -5,6 +5,7 @@
 brew install uv
 uv venv
 uv pip install -r requirements.txt
+chown -R $(id -u):$(id -g) .venv
 ```
 
 - Download binary of `protoc` and `protoc-gen-bq-schema` to `.venv/bin`
