@@ -1,10 +1,11 @@
+import argparse
 import json
 import subprocess
-from string import Template
-import yaml
-import os
-import jinja2
 from pathlib import Path
+from string import Template
+
+import jinja2
+import yaml
 from proto_schema_parser.ast import Import, Package
 from proto_schema_parser.generator import Generator
 from proto_schema_parser.parser import Parser
@@ -158,21 +159,48 @@ def search_yaml_files(directory: Path, pubsubschema_name: str):
     return definitions
 
 
-# Example usage
-if __name__ == "__main__":
-    control_plane = Path(
-        "/Users/buu.nguyen/Repositories/cake-digital-bank/control-plane"
+def main():
+    parser = argparse.ArgumentParser(
+        description="Generate BigQuery schema and templates from PubSub schema."
     )
-    pubsubschema_name = "prd-event-fcm-schema-v2"
-    bigquery_table = "northstar-as-se1-prd.mqtt.event_fcm"
-    topic_schema_definition = search_yaml_files(control_plane, pubsubschema_name)[0]
-    template_vars = generate_template_variables(
-        resource_id=bigquery_table,
-        protobuf_schema=topic_schema_definition,
-        partitioning_field="created_at",
+    parser.add_argument(
+        "directory", type=Path, help="Directory to search for YAML files."
+    )
+    parser.add_argument(
+        "pubsubschema_name", type=str, help="Name of the PubSub schema."
+    )
+    parser.add_argument("bigquery_table", type=str, help="BigQuery table resource ID.")
+    parser.add_argument(
+        "--partitioning_field",
+        type=str,
+        default="created_at",
+        help="Partitioning field for BigQuery table.",
+    )
+    parser.add_argument(
+        "--output_dir",
+        type=Path,
+        default=Path("target"),
+        help="Output directory for generated files.",
     )
 
-    with open("target/dataset.yaml", "w") as f:
+    args = parser.parse_args()
+
+    topic_schema_definition = search_yaml_files(args.directory, args.pubsubschema_name)[
+        0
+    ]
+    template_vars = generate_template_variables(
+        resource_id=args.bigquery_table,
+        protobuf_schema=topic_schema_definition,
+        partitioning_field=args.partitioning_field,
+    )
+
+    args.output_dir.mkdir(parents=True, exist_ok=True)
+
+    with open(args.output_dir / "dataset.yaml", "w") as f:
         f.write(render_bigquery_dataset(template_vars))
-    with open("target/table.yaml", "w") as f:
+    with open(args.output_dir / "table.yaml", "w") as f:
         f.write(render_bigquery_table(template_vars))
+
+
+if __name__ == "__main__":
+    main()
